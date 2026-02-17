@@ -1,50 +1,1084 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
-  <title>Login</title>
-  <link rel="stylesheet" href="./style.css">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceKey Finder</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'DM Sans', sans-serif; }
+    .title-font { font-family: 'Space Grotesk', sans-serif; }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.4; }
+      100% { transform: scale(1); opacity: 0.8; }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    
+    .recording-pulse {
+      animation: pulse-ring 1.5s ease-in-out infinite;
+    }
+    
+    .float-animation {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #fafbfc 0%, #f0f4f8 50%, #e8f0fe 100%);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+    
+    .progress-fill {
+      transition: width 0.3s ease-out;
+    }
+    
+    .piano-key {
+      flex: 1;
+      min-height: 80px;
+      border: 2px solid #1f2937;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-weight: bold;
+      user-select: none;
+    }
+    
+    .piano-key.white {
+      background: white;
+      color: #1f2937;
+    }
+    
+    .piano-key.white:hover {
+      background: #f3f4f6;
+    }
+    
+    .piano-key.white.active {
+      background: #e0f2fe;
+      box-shadow: inset 0 0 10px rgba(79, 70, 229, 0.5);
+    }
+    
+    .piano-key.black {
+      background: #1f2937;
+      color: white;
+      flex: 0.6;
+      margin: 0 -12px;
+      z-index: 10;
+      min-height: 60px;
+    }
+    
+    .piano-key.black:hover {
+      background: #374151;
+    }
+    
+    .piano-key.black.active {
+      background: #4f46e5;
+      box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    
+    .mode-tab {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      border-radius: 12px;
+    }
+    
+    .mode-tab.active {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      border-color: #4f46e5;
+    }
+  </style>
 </head>
-<body>
-<!-- partial:index.partial.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Demo Only Sign In</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <!-- Demo Only notice so it’s safe -->
-  <p class="note"> This does not collect real data.</p>
+<body class="h-full gradient-bg">
+  <div id="app-container" class="h-full w-full overflow-auto">
+    <div class="min-h-full w-full flex flex-col items-center justify-center p-6">
+      
+      <!-- Header -->
+      <header class="text-center mb-8">
+        <h1 id="app-title" class="title-font text-4xl md:text-5xl font-bold text-gray-800 mb-2">
+          VoiceKey Finder
+        </h1>
+        <p id="tagline" class="text-gray-500 text-lg">Discover your natural singing key</p>
+      </header>
 
-  <div class="box">
-    <h1>Welcome</h1>
+      <!-- Main Card -->
+      <main class="w-full max-w-2xl">
+        <div class="glass-card rounded-3xl shadow-xl p-8">
+          
+          <!-- Input Mode Selector -->
+          <div class="mb-8 flex gap-4">
+            <button id="vocal-mode-btn" class="mode-tab active">🎤 Sing</button>
+            <button id="keyboard-mode-btn" class="mode-tab">⌨️ Keyboard</button>
+          </div>
 
-    <form id="demoForm">
-      <label for="email">Email </label>
-      <input id="email" type="email" placeholder="you@example.com" />
+          <!-- Vocal Input Section -->
+          <div id="vocal-section" class="block">
+            <div id="status-section" class="text-center mb-8">
+              <div id="mic-visualizer" class="relative w-32 h-32 mx-auto mb-6">
+                <div id="pulse-ring" class="absolute inset-0 rounded-full bg-gray-200 opacity-0"></div>
+                <div id="mic-circle" class="absolute inset-2 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-inner transition-all duration-300">
+                  <span class="text-5xl">🎤</span>
+                </div>
+              </div>
+              
+              <p id="status-text" class="text-gray-600 font-medium text-lg">
+                Tap Start to begin singing
+              </p>
+              
+              <div id="progress-container" class="hidden mt-4">
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 progress-fill" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="text-sm text-gray-500 mt-2">0 / 15 seconds</p>
+              </div>
+            </div>
 
-      <label for="password">Password </label>
-      <input id="password" type="password" placeholder="••••••••" />
+            <div class="flex gap-4 justify-center mb-6">
+              <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 text-lg">
+                ▶ Start
+              </button>
+              <button id="stop-btn" class="px-8 py-4 bg-gray-200 text-gray-400 font-semibold rounded-2xl cursor-not-allowed text-lg" disabled>
+                ■ Stop
+              </button>
+            </div>
+          </div>
 
-      <div class="row">
-        <label class="check">
-          <input id="remember" type="checkbox" />
-          Remember me 
-        </label>
+          <!-- Keyboard Input Section -->
+          <div id="keyboard-section" class="hidden">
+            <p class="text-sm text-gray-600 text-center mb-4">Click keys or use your computer keyboard</p>
+            
+            <!-- Piano Keyboard -->
+            <div class="mb-6 bg-gray-900 p-4 rounded-2xl">
+              <div class="flex gap-0 justify-center" style="max-width: 100%; overflow-x: auto;">
+                <!-- C3 to B4 range -->
+                <div class="piano-key white" data-note="C" data-octave="3">C</div>
+                <div class="piano-key black" data-note="C#" data-octave="3">C#</div>
+                <div class="piano-key white" data-note="D" data-octave="3">D</div>
+                <div class="piano-key black" data-note="D#" data-octave="3">D#</div>
+                <div class="piano-key white" data-note="E" data-octave="3">E</div>
+                <div class="piano-key white" data-note="F" data-octave="3">F</div>
+                <div class="piano-key black" data-note="F#" data-octave="3">F#</div>
+                <div class="piano-key white" data-note="G" data-octave="3">G</div>
+                <div class="piano-key black" data-note="G#" data-octave="3">G#</div>
+                <div class="piano-key white" data-note="A" data-octave="3">A</div>
+                <div class="piano-key black" data-note="A#" data-octave="3">A#</div>
+                <div class="piano-key white" data-note="B" data-octave="3">B</div>
+                
+                <div class="piano-key white" data-note="C" data-octave="4">C</div>
+                <div class="piano-key black" data-note="C#" data-octave="4">C#</div>
+                <div class="piano-key white" data-note="D" data-octave="4">D</div>
+                <div class="piano-key black" data-note="D#" data-octave="4">D#</div>
+                <div class="piano-key white" data-note="E" data-octave="4">E</div>
+                <div class="piano-key white" data-note="F" data-octave="4">F</div>
+                <div class="piano-key black" data-note="F#" data-octave="4">F#</div>
+                <div class="piano-key white" data-note="G" data-octave="4">G</div>
+                <div class="piano-key black" data-note="G#" data-octave="4">G#</div>
+                <div class="piano-key white" data-note="A" data-octave="4">A</div>
+                <div class="piano-key black" data-note="A#" data-octave="4">A#</div>
+                <div class="piano-key white" data-note="B" data-octave="4">B</div>
+                
+                <div class="piano-key white" data-note="C" data-octave="5">C</div>
+              </div>
+            </div>
 
-        <button type="button" id="forgot" class="link">Forgot?</button>
-      </div>
+            <div class="flex gap-4 justify-center">
+              <button id="analyze-btn" class="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 text-lg">
+                🎵 Analyze Key
+              </button>
+              <button id="clear-btn" class="px-8 py-4 bg-gray-200 text-gray-600 font-semibold rounded-2xl hover:bg-gray-300 transition-all duration-200 text-lg">
+                🔄 Clear
+              </button>
+            </div>
+          </div>
 
-      <button type="button" id="continueBtn">Continue</button>
-    </form>
+          <!-- Results Section (hidden initially) -->
+          <div id="results-section" class="hidden">
+            <div class="border-t border-gray-200 pt-6">
+              
+              <!-- Primary Result -->
+              <div class="text-center mb-6 float-animation">
+                <div class="inline-block bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-2xl shadow-lg mb-4">
+                  <span class="text-lg opacity-80">Your Natural Key</span>
+                </div>
+                <h2 id="result-key" class="title-font text-6xl font-bold text-gray-800">
+                  C Major
+                </h2>
+              </div>
 
-    <p id="message" class="message" hidden>Done!</p>
+              <!-- Details Grid -->
+              <div class="grid grid-cols-1 gap-4">
+                
+                <div class="bg-gray-50 rounded-2xl p-4 flex items-center gap-4">
+                  <span class="text-3xl">🎹</span>
+                  <div>
+                    <p class="text-sm text-gray-500 font-medium">Start Playing From</p>
+                    <p id="result-root" class="text-xl font-bold text-gray-800">C</p>
+                  </div>
+                </div>
+
+                <div id="range-container" class="bg-gray-50 rounded-2xl p-4 flex items-center gap-4">
+                  <span class="text-3xl">📏</span>
+                  <div>
+                    <p class="text-sm text-gray-500 font-medium">Vocal Comfort Range</p>
+                    <p id="result-range" class="text-xl font-bold text-gray-800">C3 – C5</p>
+                  </div>
+                </div>
+
+                <div id="comfort-container" class="bg-gray-50 rounded-2xl p-4 flex items-center gap-4">
+                  <span class="text-3xl">🔥</span>
+                  <div>
+                    <p class="text-sm text-gray-500 font-medium">Comfort Score</p>
+                    <p id="result-comfort" class="text-xl font-bold text-green-600">High</p>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Key Options -->
+              <div class="mt-6 bg-indigo-50 rounded-2xl p-4">
+                <p class="text-sm text-indigo-600 font-semibold mb-3 text-center">Alternative Keys</p>
+                <div class="flex justify-center gap-4">
+                  <div class="text-center">
+                    <p class="text-xs text-gray-500">Lower</p>
+                    <p id="lower-key" class="text-lg font-bold text-gray-700">B</p>
+                  </div>
+                  <div class="text-center px-6 border-x border-indigo-200">
+                    <p class="text-xs text-indigo-600">Primary</p>
+                    <p id="primary-key" class="text-lg font-bold text-indigo-700">C</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-xs text-gray-500">Higher</p>
+                    <p id="higher-key" class="text-lg font-bold text-gray-700">D</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Try Again Button -->
+              <button id="reset-btn" class="w-full mt-6 py-4 bg-gray-100 text-gray-600 font-semibold rounded-2xl hover:bg-gray-200 transition-all duration-200">
+                🔄 Try Again
+              </button>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Tip -->
+        <p class="text-center text-gray-400 text-sm mt-6 px-4">
+          💡 Sing for 10-15 seconds or play a scale on the keyboard
+        </p>
+
+      </main>
+
+    </div>
   </div>
-<!-- partial -->
-  
-</body>
+
+  <script>
+    // Configuration
+    const defaultConfig = {
+      app_title: 'VoiceKey Finder',
+      tagline: 'Discover your natural singing key'
+    };
+
+    let config = { ...defaultConfig };
+    let currentMode = 'vocal'; // 'vocal' or 'keyboard'
+
+    // Element SDK initialization
+    function onConfigChange(newConfig) {
+      config = { ...defaultConfig, ...newConfig };
+      document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+      document.getElementById('tagline').textContent = config.tagline || defaultConfig.tagline;
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['app_title', config.app_title || defaultConfig.app_title],
+        ['tagline', config.tagline || defaultConfig.tagline]
+      ]);
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+
+    // ============ CONSTANTS ============
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const A4_FREQUENCY = 440;
+    const MAJOR_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
+    
+    const MIN_FREQUENCY = 80;
+    const MAX_FREQUENCY = 1000;
+    const SPIKE_REJECTION_THRESHOLD = 50;
+    const MIN_SUSTAINED_FRAMES = 3;
+    const MIN_NOTE_DURATION_MS = 200;
+    const RECORDING_DURATION = 15;
+
+    // ============ ENHARMONIC NORMALIZATION ============
+    function normalizeEnharmonic(noteName) {
+      const enharmonicMap = {
+        'C#': 'C#', 'Db': 'C#',
+        'D#': 'D#', 'Eb': 'D#',
+        'E#': 'F',  'F': 'F',
+        'F#': 'F#', 'Gb': 'F#',
+        'G#': 'G#', 'Ab': 'G#',
+        'A#': 'A#', 'Bb': 'A#',
+        'B#': 'C',  'B': 'B',
+        'C': 'C', 'D': 'D', 'E': 'E', 'G': 'G', 'A': 'A'
+      };
+      return enharmonicMap[noteName] || noteName;
+    }
+
+    function getNoteIndex(fullNoteName) {
+      const noteName = fullNoteName.replace(/[0-9]/g, '');
+      const normalized = normalizeEnharmonic(noteName);
+      const idx = NOTE_NAMES.indexOf(normalized);
+      return idx >= 0 ? idx : 0;
+    }
+
+    // ============ AUDIO STATE ============
+    let audioContext = null;
+    let analyser = null;
+    let mediaStream = null;
+    let isRecording = false;
+    let recordingStartTime = 0;
+    let animationFrameId = null;
+    let sustainedNoteSessions = [];
+    let currentNoteSession = null;
+    let lowestNote = null;
+    let highestNote = null;
+    let lastValidPitch = null;
+    let smoothedPitch = null;
+
+    // ============ KEYBOARD STATE ============
+    let keyboardNotes = [];
+    let keyboardNoteStartTimes = {};
+
+    // ============ DOM ELEMENTS ============
+    const vocalModeBtn = document.getElementById('vocal-mode-btn');
+    const keyboardModeBtn = document.getElementById('keyboard-mode-btn');
+    const vocalSection = document.getElementById('vocal-section');
+    const keyboardSection = document.getElementById('keyboard-section');
+    
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    
+    const statusText = document.getElementById('status-text');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const resultsSection = document.getElementById('results-section');
+    const pulseRing = document.getElementById('pulse-ring');
+    const micCircle = document.getElementById('mic-circle');
+    const rangeContainer = document.getElementById('range-container');
+    const comfortContainer = document.getElementById('comfort-container');
+
+    // ============ MODE SWITCHING ============
+    function switchMode(mode) {
+      currentMode = mode;
+      
+      if (mode === 'vocal') {
+        vocalModeBtn.classList.add('active');
+        keyboardModeBtn.classList.remove('active');
+        vocalSection.classList.remove('hidden');
+        keyboardSection.classList.add('hidden');
+      } else {
+        vocalModeBtn.classList.remove('active');
+        keyboardModeBtn.classList.add('active');
+        vocalSection.classList.add('hidden');
+        keyboardSection.classList.remove('hidden');
+      }
+      
+      resultsSection.classList.add('hidden');
+      resetUI();
+    }
+
+    vocalModeBtn.addEventListener('click', () => switchMode('vocal'));
+    keyboardModeBtn.addEventListener('click', () => switchMode('keyboard'));
+
+    // ============ FREQUENCY TO NOTE ============
+    function frequencyToNote(frequency) {
+      if (frequency < MIN_FREQUENCY || frequency > MAX_FREQUENCY) return null;
+      
+      const noteNum = 12 * (Math.log2(frequency / A4_FREQUENCY));
+      const noteIndex = Math.round(noteNum) + 57;
+      const octave = Math.floor(noteIndex / 12);
+      const noteName = NOTE_NAMES[((noteIndex % 12) + 12) % 12];
+      
+      return {
+        name: noteName,
+        octave: octave,
+        fullName: noteName + octave,
+        noteIndex: noteIndex,
+        frequency: frequency
+      };
+    }
+
+    // ============ YIN PITCH DETECTION ============
+    function detectPitch(buffer, sampleRate) {
+      const bufferSize = buffer.length;
+      const yinBuffer = new Float32Array(bufferSize / 2);
+      let runningSum = 0;
+      yinBuffer[0] = 1;
+      
+      for (let tau = 1; tau < bufferSize / 2; tau++) {
+        let sum = 0;
+        for (let i = 0; i < bufferSize / 2; i++) {
+          const delta = buffer[i] - buffer[i + tau];
+          sum += delta * delta;
+        }
+        yinBuffer[tau] = sum;
+      }
+      
+      for (let tau = 1; tau < bufferSize / 2; tau++) {
+        runningSum += yinBuffer[tau];
+        yinBuffer[tau] *= tau / runningSum;
+      }
+      
+      const threshold = 0.1;
+      let tauEstimate = -1;
+      
+      for (let tau = 2; tau < bufferSize / 2; tau++) {
+        if (yinBuffer[tau] < threshold) {
+          while (tau + 1 < bufferSize / 2 && yinBuffer[tau + 1] < yinBuffer[tau]) {
+            tau++;
+          }
+          tauEstimate = tau;
+          break;
+        }
+      }
+      
+      if (tauEstimate === -1 || tauEstimate === 0) return -1;
+      
+      const s0 = yinBuffer[tauEstimate - 1];
+      const s1 = yinBuffer[tauEstimate];
+      const s2 = yinBuffer[tauEstimate + 1];
+      
+      const betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+      return sampleRate / betterTau;
+    }
+
+    // ============ PITCH SMOOTHING ============
+    function smoothPitch(rawPitch) {
+      const smoothingFactor = 0.3; // Moving average weight
+      
+      if (!smoothedPitch) {
+        smoothedPitch = rawPitch;
+        return rawPitch;
+      }
+      
+      smoothedPitch = smoothedPitch * (1 - smoothingFactor) + rawPitch * smoothingFactor;
+      return smoothedPitch;
+    }
+
+    // ============ STABLE PITCH CHECK ============
+    function isStablePitch(newPitch, lastPitch) {
+      if (!lastPitch || lastPitch < 0) return true;
+      return Math.abs(newPitch - lastPitch) < SPIKE_REJECTION_THRESHOLD;
+    }
+
+    // ============ TRACK SUSTAINED NOTES ============
+    function trackSustainedNote(note) {
+      if (!currentNoteSession) {
+        currentNoteSession = {
+          note: note.fullName,
+          noteIndex: note.noteIndex,
+          startTime: Date.now(),
+          frameCount: 1
+        };
+      } else if (currentNoteSession.note === note.fullName) {
+        currentNoteSession.frameCount++;
+      } else {
+        if (currentNoteSession.frameCount >= MIN_SUSTAINED_FRAMES) {
+          currentNoteSession.endTime = Date.now();
+          currentNoteSession.duration = currentNoteSession.endTime - currentNoteSession.startTime;
+          sustainedNoteSessions.push(currentNoteSession);
+        }
+        
+        currentNoteSession = {
+          note: note.fullName,
+          noteIndex: note.noteIndex,
+          startTime: Date.now(),
+          frameCount: 1
+        };
+      }
+    }
+
+    // ============ AUDIO PROCESSING LOOP ============
+    function processAudio() {
+      if (!isRecording) return;
+      
+      const bufferLength = analyser.fftSize;
+      const buffer = new Float32Array(bufferLength);
+      analyser.getFloatTimeDomainData(buffer);
+      
+      let maxAmplitude = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        maxAmplitude = Math.max(maxAmplitude, Math.abs(buffer[i]));
+      }
+      
+      if (maxAmplitude > 0.01) {
+        const rawPitch = detectPitch(buffer, audioContext.sampleRate);
+        
+        if (rawPitch > MIN_FREQUENCY && rawPitch < MAX_FREQUENCY) {
+          const smoothed = smoothPitch(rawPitch);
+          
+          if (isStablePitch(smoothed, lastValidPitch)) {
+            const note = frequencyToNote(smoothed);
+            
+            if (note) {
+              trackSustainedNote(note);
+              
+              if (lowestNote === null || note.noteIndex < lowestNote.noteIndex) {
+                lowestNote = note;
+              }
+              if (highestNote === null || note.noteIndex > highestNote.noteIndex) {
+                highestNote = note;
+              }
+              
+              lastValidPitch = smoothed;
+            }
+          }
+        }
+      }
+      
+      const elapsed = (Date.now() - recordingStartTime) / 1000;
+      const progress = Math.min(elapsed / RECORDING_DURATION * 100, 100);
+      progressBar.style.width = progress + '%';
+      progressText.textContent = Math.floor(elapsed) + ' / ' + RECORDING_DURATION + ' seconds';
+      
+      if (elapsed >= RECORDING_DURATION) {
+        stopRecording();
+        return;
+      }
+      
+      animationFrameId = requestAnimationFrame(processAudio);
+    }
+
+    // ============ START RECORDING ============
+    async function startRecording() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { 
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        source.connect(analyser);
+        
+        sustainedNoteSessions = [];
+        currentNoteSession = null;
+        lowestNote = null;
+        highestNote = null;
+        lastValidPitch = null;
+        smoothedPitch = null;
+        
+        isRecording = true;
+        recordingStartTime = Date.now();
+        
+        startBtn.disabled = true;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        stopBtn.disabled = false;
+        stopBtn.classList.remove('bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+        stopBtn.classList.add('bg-red-500', 'text-white', 'hover:bg-red-600');
+        
+        statusText.textContent = '🎵 Sing naturally now...';
+        progressContainer.classList.remove('hidden');
+        resultsSection.classList.add('hidden');
+        
+        pulseRing.classList.add('recording-pulse', 'opacity-100', 'bg-red-400');
+        micCircle.classList.remove('from-gray-100', 'to-gray-200');
+        micCircle.classList.add('from-red-100', 'to-red-200');
+        
+        processAudio();
+        
+      } catch (error) {
+        statusText.textContent = '⚠️ Microphone access denied. Please allow access and try again.';
+      }
+    }
+
+    // ============ STOP RECORDING ============
+    function stopRecording() {
+      isRecording = false;
+      
+      if (currentNoteSession && currentNoteSession.frameCount >= MIN_SUSTAINED_FRAMES) {
+        currentNoteSession.endTime = Date.now();
+        currentNoteSession.duration = currentNoteSession.endTime - currentNoteSession.startTime;
+        sustainedNoteSessions.push(currentNoteSession);
+      }
+      
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+      
+      if (audioContext) {
+        audioContext.close();
+      }
+      
+      startBtn.disabled = false;
+      startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      stopBtn.disabled = true;
+      stopBtn.classList.add('bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+      stopBtn.classList.remove('bg-red-500', 'text-white', 'hover:bg-red-600');
+      
+      pulseRing.classList.remove('recording-pulse', 'opacity-100', 'bg-red-400');
+      micCircle.classList.add('from-gray-100', 'to-gray-200');
+      micCircle.classList.remove('from-red-100', 'to-red-200');
+      
+      progressContainer.classList.add('hidden');
+      
+      analyzeResults(sustainedNoteSessions, true);
+    }
+
+    // ============ FILTER SHORT NOTES ============
+    function filterShortNotes(sessions) {
+      return sessions.filter(s => s.duration >= MIN_NOTE_DURATION_MS);
+    }
+
+    // ============ BUILD NOTE HISTOGRAM ============
+    function buildNoteHistogram(sessions) {
+      const filtered = filterShortNotes(sessions);
+      const histogram = {};
+      
+      filtered.forEach(session => {
+        const noteIndex = getNoteIndex(session.note);
+        const durationSec = session.duration / 1000;
+        
+        if (!histogram[noteIndex]) {
+          histogram[noteIndex] = { 
+            duration: 0,
+            count: 0,
+            maxDuration: 0
+          };
+        }
+        
+        histogram[noteIndex].duration += durationSec;
+        histogram[noteIndex].count += 1;
+        histogram[noteIndex].maxDuration = Math.max(histogram[noteIndex].maxDuration, durationSec);
+      });
+      
+      return histogram;
+    }
+
+    // ============ SCORE SCALE ============
+    function scoreScale(rootIndex, histogram) {
+      const scaleNotes = new Set();
+      MAJOR_SCALE_INTERVALS.forEach(interval => {
+        scaleNotes.add((rootIndex + interval) % 12);
+      });
+      
+      let inScaleCount = 0;
+      let inScaleDuration = 0;
+      let outOfScaleDuration = 0;
+      let rootNoteDuration = 0;
+      
+      for (const [noteIdx, data] of Object.entries(histogram)) {
+        const noteIndex = parseInt(noteIdx);
+        const durationSec = data.duration;
+        
+        if (scaleNotes.has(noteIndex)) {
+          inScaleCount++;
+          inScaleDuration += durationSec;
+          
+          if (noteIndex === rootIndex) {
+            rootNoteDuration = durationSec;
+          }
+        } else {
+          outOfScaleDuration += durationSec;
+        }
+      }
+      
+      let score = inScaleCount * 15 + inScaleDuration * 3 - outOfScaleDuration * 5;
+      
+      if (rootNoteDuration > 0.5) {
+        score += 100;
+      } else if (rootNoteDuration > 0.2) {
+        score += 30;
+      } else if (rootNoteDuration === 0) {
+        score -= 50;
+      }
+      
+      if (inScaleCount >= 5) {
+        score += 40;
+      } else if (inScaleCount >= 3) {
+        score += 10;
+      }
+      
+      return Math.max(0, score);
+    }
+
+    // ============ FIND TONIC CANDIDATES ============
+    function findTonicCandidates(sessions) {
+      const filtered = filterShortNotes(sessions);
+      
+      if (filtered.length === 0) return [];
+      
+      // Final note (highest weight: +25)
+      const finalNote = getNoteIndex(filtered[filtered.length - 1].note);
+      
+      // Longest-held note (+20)
+      let longestIdx = 0;
+      let longestDuration = 0;
+      filtered.forEach((s, idx) => {
+        if (s.duration > longestDuration) {
+          longestDuration = s.duration;
+          longestIdx = idx;
+        }
+      });
+      const longestNote = getNoteIndex(filtered[longestIdx].note);
+      
+      // Most frequent note (+10)
+      const histogram = buildNoteHistogram(sessions);
+      let mostFreqIdx = 0;
+      let mostFreqCount = 0;
+      for (const [noteIdx, data] of Object.entries(histogram)) {
+        if (data.count > mostFreqCount) {
+          mostFreqCount = data.count;
+          mostFreqIdx = parseInt(noteIdx);
+        }
+      }
+      
+      const candidateMap = {};
+      candidateMap[finalNote] = (candidateMap[finalNote] || 0) + 25;
+      candidateMap[longestNote] = (candidateMap[longestNote] || 0) + 20;
+      candidateMap[mostFreqIdx] = (candidateMap[mostFreqIdx] || 0) + 10;
+      
+      return Object.entries(candidateMap)
+        .map(([noteIdx, weight]) => ({ noteIdx: parseInt(noteIdx), weight }))
+        .sort((a, b) => b.weight - a.weight);
+    }
+
+    // ============ SCORE SCALES WITH TONIC CANDIDATES ============
+    function scoreScalesWithTonicCandidates(tonicCandidates, sessions) {
+      const histogram = buildNoteHistogram(sessions);
+      const allScores = [];
+      
+      for (let rootIdx = 0; rootIdx < 12; rootIdx++) {
+        const baseScore = scoreScale(rootIdx, histogram);
+        
+        let tonicWeight = 0;
+        tonicCandidates.forEach(candidate => {
+          if (candidate.noteIdx === rootIdx) {
+            tonicWeight = candidate.weight;
+          }
+        });
+        
+        const finalScore = baseScore + tonicWeight * 5;
+        
+        allScores.push({
+          rootIdx: rootIdx,
+          rootName: NOTE_NAMES[rootIdx],
+          baseScore: baseScore,
+          tonicWeight: tonicWeight,
+          finalScore: finalScore
+        });
+      }
+      
+      return allScores.sort((a, b) => b.finalScore - a.finalScore);
+    }
+
+    // ============ KEYBOARD INPUT ============
+    const pianoKeys = document.querySelectorAll('.piano-key');
+    
+    pianoKeys.forEach(key => {
+      key.addEventListener('click', () => pressKey(key));
+      key.addEventListener('mousedown', () => pressKey(key));
+      key.addEventListener('mouseup', () => releaseKey(key));
+    });
+
+    // Computer keyboard mapping
+    const keyboardMap = {
+      'c': { note: 'C', octave: '4' },
+      'v': { note: 'C#', octave: '4' },
+      'd': { note: 'D', octave: '4' },
+      'f': { note: 'D#', octave: '4' },
+      'e': { note: 'E', octave: '4' },
+      'r': { note: 'F', octave: '4' },
+      't': { note: 'F#', octave: '4' },
+      'g': { note: 'G', octave: '4' },
+      'h': { note: 'G#', octave: '4' },
+      'u': { note: 'A', octave: '4' },
+      'j': { note: 'A#', octave: '4' },
+      'i': { note: 'B', octave: '4' },
+      'o': { note: 'C', octave: '5' }
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (currentMode !== 'keyboard') return;
+      
+      const key = e.key.toLowerCase();
+      if (keyboardMap[key]) {
+        const noteData = keyboardMap[key];
+        const fullNote = noteData.note + noteData.octave;
+        
+        if (!keyboardNoteStartTimes[fullNote]) {
+          keyboardNoteStartTimes[fullNote] = Date.now();
+          
+          const button = document.querySelector(`.piano-key[data-note="${noteData.note}"][data-octave="${noteData.octave}"]`);
+          if (button) {
+            button.classList.add('active');
+          }
+        }
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (currentMode !== 'keyboard') return;
+      
+      const key = e.key.toLowerCase();
+      if (keyboardMap[key]) {
+        const noteData = keyboardMap[key];
+        const fullNote = noteData.note + noteData.octave;
+        
+        if (keyboardNoteStartTimes[fullNote]) {
+          const startTime = keyboardNoteStartTimes[fullNote];
+          const duration = Date.now() - startTime;
+          
+          if (duration >= MIN_NOTE_DURATION_MS) {
+            keyboardNotes.push({
+              note: fullNote,
+              noteIndex: getNoteIndex(fullNote),
+              duration: duration
+            });
+          }
+          
+          delete keyboardNoteStartTimes[fullNote];
+          
+          const button = document.querySelector(`.piano-key[data-note="${noteData.note}"][data-octave="${noteData.octave}"]`);
+          if (button) {
+            button.classList.remove('active');
+          }
+        }
+      }
+    });
+
+    function pressKey(keyElement) {
+      const note = keyElement.dataset.note;
+      const octave = keyElement.dataset.octave;
+      const fullNote = note + octave;
+      
+      if (!keyboardNoteStartTimes[fullNote]) {
+        keyboardNoteStartTimes[fullNote] = Date.now();
+        keyElement.classList.add('active');
+      }
+    }
+
+    function releaseKey(keyElement) {
+      const note = keyElement.dataset.note;
+      const octave = keyElement.dataset.octave;
+      const fullNote = note + octave;
+      
+      if (keyboardNoteStartTimes[fullNote]) {
+        const startTime = keyboardNoteStartTimes[fullNote];
+        const duration = Date.now() - startTime;
+        
+        if (duration >= MIN_NOTE_DURATION_MS) {
+          keyboardNotes.push({
+            note: fullNote,
+            noteIndex: getNoteIndex(fullNote),
+            duration: duration
+          });
+        }
+        
+        delete keyboardNoteStartTimes[fullNote];
+        keyElement.classList.remove('active');
+      }
+    }
+
+    // ============ ANALYZE RESULTS ============
+    function analyzeResults(sessions, isVocal) {
+      if (sessions.length === 0) {
+        if (isVocal) {
+          statusText.textContent = '😕 No singing detected. Please try again and sing clearly.';
+        }
+        return;
+      }
+      
+      const histogram = buildNoteHistogram(sessions);
+      const uniqueNotes = Object.keys(histogram).length;
+      
+      let confirmedRootNote;
+      let rootIndex;
+      let displayLowest = null;
+      let displayHighest = null;
+      
+      // SINGLE NOTE MODE (≤2 unique notes)
+      if (uniqueNotes <= 2) {
+        let maxDuration = 0;
+        let primaryNoteIdx = 0;
+        
+        for (const [noteIdx, data] of Object.entries(histogram)) {
+          if (data.duration > maxDuration) {
+            maxDuration = data.duration;
+            primaryNoteIdx = parseInt(noteIdx);
+          }
+        }
+        
+        confirmedRootNote = NOTE_NAMES[primaryNoteIdx];
+        rootIndex = primaryNoteIdx;
+        
+      } else {
+        // MULTI-NOTE MODE (3+ unique notes)
+        const tonicCandidates = findTonicCandidates(sessions);
+        
+        if (tonicCandidates.length === 0) {
+          statusText.textContent = '😕 No singing detected. Please try again and sing clearly.';
+          return;
+        }
+        
+        const scaledResults = scoreScalesWithTonicCandidates(tonicCandidates, sessions);
+        const bestScale = scaledResults[0];
+        rootIndex = bestScale.rootIdx;
+        confirmedRootNote = bestScale.rootName;
+      }
+      
+      // Calculate range for vocal only
+      if (isVocal) {
+        if (lowestNote) displayLowest = lowestNote.fullName;
+        if (highestNote) displayHighest = highestNote.fullName;
+      }
+      
+      // Alternatives
+      const lowerKey = NOTE_NAMES[(rootIndex - 1 + 12) % 12];
+      const higherKey = NOTE_NAMES[(rootIndex + 1) % 12];
+      
+      // Comfort score (vocal only)
+      let comfortScore = 'Medium';
+      let comfortColor = 'text-yellow-600';
+      
+      if (isVocal) {
+        const filteredSessions = filterShortNotes(sessions);
+        const rootNoteSessions = filteredSessions.filter(s => getNoteIndex(s.note) === rootIndex);
+        const totalRootDuration = rootNoteSessions.reduce((sum, s) => sum + s.duration, 0);
+        const totalDuration = filteredSessions.reduce((sum, s) => sum + s.duration, 0);
+        const rootNoteStrength = totalDuration > 0 ? totalRootDuration / totalDuration : 0;
+        
+        const rangeWidth = displayHighest && displayLowest ? highestNote.noteIndex - lowestNote.noteIndex : 0;
+        const avgDuration = filteredSessions.length > 0 ? filteredSessions.reduce((sum, s) => sum + s.duration, 0) / filteredSessions.length : 0;
+        
+        let comfortPoints = 0;
+        if (rangeWidth >= 8) comfortPoints += 2;
+        else if (rangeWidth >= 5) comfortPoints += 1;
+        
+        if (avgDuration > 1000) comfortPoints += 2;
+        else if (avgDuration > 500) comfortPoints += 1;
+        
+        if (rootNoteStrength > 0.25) comfortPoints += 2;
+        else if (rootNoteStrength > 0.15) comfortPoints += 1;
+        
+        if (comfortPoints >= 5) {
+          comfortScore = 'High';
+          comfortColor = 'text-green-600';
+        } else if (comfortPoints <= 2) {
+          comfortScore = 'Low';
+          comfortColor = 'text-red-500';
+        }
+      }
+      
+      // Update UI
+      document.getElementById('result-key').textContent = confirmedRootNote + ' Major';
+      document.getElementById('result-root').textContent = confirmedRootNote;
+      
+      if (isVocal) {
+        document.getElementById('result-range').textContent = 
+          (displayLowest ? displayLowest : 'N/A') + ' – ' + 
+          (displayHighest ? displayHighest : 'N/A');
+        rangeContainer.classList.remove('hidden');
+        comfortContainer.classList.remove('hidden');
+        
+        const comfortEl = document.getElementById('result-comfort');
+        comfortEl.textContent = comfortScore;
+        comfortEl.className = 'text-xl font-bold ' + comfortColor;
+        
+        statusText.textContent = '✨ Analysis complete!';
+      } else {
+        rangeContainer.classList.add('hidden');
+        comfortContainer.classList.add('hidden');
+      }
+      
+      document.getElementById('lower-key').textContent = lowerKey;
+      document.getElementById('primary-key').textContent = confirmedRootNote;
+      document.getElementById('higher-key').textContent = higherKey;
+      
+      resultsSection.classList.remove('hidden');
+    }
+
+    // ============ KEYBOARD ANALYZE ============
+    analyzeBtn.addEventListener('click', () => {
+      if (keyboardNotes.length === 0) {
+        alert('Please play some notes first');
+        return;
+      }
+      analyzeResults(keyboardNotes, false);
+    });
+
+    // ============ CLEAR ============
+    clearBtn.addEventListener('click', () => {
+      keyboardNotes = [];
+      keyboardNoteStartTimes = {};
+      resultsSection.classList.add('hidden');
+    });
+
+    // ============ RESET ============
+    function resetUI() {
+      resultsSection.classList.add('hidden');
+      progressBar.style.width = '0%';
+      statusText.textContent = 'Tap Start to begin singing';
+    }
+
+    resetBtn.addEventListener('click', resetUI);
+
+    // ============ EVENT LISTENERS ============
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9cf3c2d194f6e4ed',t:'MTc3MTMxNTMzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
